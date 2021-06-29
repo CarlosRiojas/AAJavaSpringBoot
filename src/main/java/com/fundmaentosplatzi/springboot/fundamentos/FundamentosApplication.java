@@ -8,13 +8,13 @@ import com.fundmaentosplatzi.springboot.fundamentos.POJO.UserPojo;
 import com.fundmaentosplatzi.springboot.fundamentos.component.ComponentDependency;
 import com.fundmaentosplatzi.springboot.fundamentos.entity.User;
 import com.fundmaentosplatzi.springboot.fundamentos.repository.UserRepository;
+import com.fundmaentosplatzi.springboot.fundamentos.service.UserService;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.data.domain.Sort;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -23,7 +23,7 @@ import java.util.List;
 @SpringBootApplication
 public class FundamentosApplication implements CommandLineRunner {
 
-	private final Log LOGGER = LogFactory.getLog(FundamentosApplication.class);
+	private final Log LOGGER = LogFactory.getLog(this.getClass());
 
 	//@Autowire ya no es obligatorio
 	private ComponentDependency componentDependency;
@@ -35,13 +35,14 @@ public class FundamentosApplication implements CommandLineRunner {
 	private UserPojo userPojo;
 	private UserRepository userRepository;
 
+	private UserService userService;
 
 
 	public FundamentosApplication(@Qualifier("componentTwoImplement") ComponentDependency componentDependency,
 								  MyBean myBean, MyBeanWithDependency myBeanWithDependency,
 								  MyReto1WithDependency myReto1WithDependency,
 								  MyBeanWithProps myBeanWithProps,UserPojo userPojo,
-								  UserRepository userRepository){
+								  UserRepository userRepository,UserService userService){
 		this.componentDependency = componentDependency;
 		this.myBean = myBean;
 		this.myBeanWithDependency = myBeanWithDependency;
@@ -49,6 +50,8 @@ public class FundamentosApplication implements CommandLineRunner {
 		this.myBeanWithProps= myBeanWithProps;
 		this.userPojo = userPojo;
 		this.userRepository= userRepository;
+		this.userService = userService;
+
 	}
 
 
@@ -62,14 +65,35 @@ public class FundamentosApplication implements CommandLineRunner {
 		//ejemplosAnteriores();
 		saveUsersInDB();
 		getInformationJpqlFromUser();
+		saveWithErrorTransactional();
 
 	}
+	private void saveWithErrorTransactional(){
+		User test1 = new User("TestTransactional1","TestTrans1@domain.com",LocalDate.now());
+		User test2 = new User("TestTransactional2","TestTrans2@domain.com",LocalDate.now());
+		User test3 = new User("TestTransactional3","TestTrans3@domain.com",LocalDate.now());
+		User test4 = new User("TestTransactional4","TestTrans4@domain.com",LocalDate.now());
+
+		List<User> users= Arrays.asList(test1,test2,test3,test4);
+		try {
+			userService.saveTransactional(users);
+		}catch(Exception e) {
+
+
+			userService.getAllUsers().stream()
+					.forEach(user ->
+							LOGGER.info("Este es el usuario dentro del metodo transaccional " + e));
+
+		}
+	}
+
+
 	private void getInformationJpqlFromUser(){
-		LOGGER.info("Usuario  con el metodo findByUserEmail"+
-				userRepository.findByUserEmail("john@mailmail")
+		/*LOGGER.info("Usuario  con el metodo findByUserEmail"+
+				userRepository.findByUserEmail("john@mailmail.com")
 		.orElseThrow(()->new RuntimeException("no se encontro el usuario")));
 
-		userRepository.findAndSort("user", Sort.by("id").descending())
+		userRepository.findByAndSort("user", Sort.by("id").descending())
 				.stream()
 				.forEach((user -> LOGGER.info("User con metodo Sort"+user)));
 
@@ -77,25 +101,53 @@ public class FundamentosApplication implements CommandLineRunner {
 				.stream()
 				.forEach(user -> LOGGER.info("Usuario con query method"+user));
 
-		LOGGER.info("Usuario con query method findByEmailAndName"+userRepository.findByEmailAndName("cris@mailmail","Cris")
+		LOGGER.info("Usuario con query method findByEmailAndName"+userRepository.findByEmailAndName("cris@mailmail.com","Cris")
 				.orElseThrow(()-> new RuntimeException(("Usuario No existe"))));
 
+		userRepository.findByNameLike("%j%")
+				.stream()
+				.forEach(user -> LOGGER.info("Usuario findByNamelike"+ user));
+
+		userRepository.findByNameOrEmail(null, "6@mailmail.com")
+				.stream()
+				.forEach(user -> LOGGER.info("Usuario findByNameOrEmail"+user));*/
+
+		userRepository.findByBirthDateBetween(LocalDate.of(2021,3,1),LocalDate.of(2021,8,20))
+				.stream()
+				.forEach(user -> LOGGER.info("Usuario con intervalo de fechas"+user));
+
+		userRepository.findByNameLikeOrderByIdDesc("%user%")
+				.stream()
+				.forEach(user-> LOGGER.info("Usuario de Like y ordenado"+user));
+
+		userRepository.findByNameLikeOrderByIdDesc("%user%")
+				.stream()
+				.forEach(user-> LOGGER.info("Usuario de Like y ordenado"+user));
+
+		userRepository.findByNameContainingOrderByIdDesc("user")
+				.stream()
+				.forEach(user-> LOGGER.info("Usuario de Like y ordenado"+user));
+
+		LOGGER.info("a partir del named parameter es:" + userRepository.getAllByBirthdDateAndEmail(LocalDate.of(2021,7,12),
+				"damiann@mailmail.com")
+		.orElseThrow(()->
+				new RuntimeException("No se encontro el usuario a partir del named parameter")));
 	}
 
 
 
 
  private void saveUsersInDB(){
-	 User user1 = new User("John", "john@mailmail", LocalDate.of(2021,4,26));
-	 User user2 = new User("Damian", "damiann@mailmail", LocalDate.of(2021,7,12));
-	 User user3 = new User("Cris", "cris@mailmail", LocalDate.of(2021,4,26));
-	 User user4 = new User("User4", "4@mailmail", LocalDate.of(2021,5,26));
-	 User user5 = new User("User5", "5@mailmail", LocalDate.of(2021,6,24));
-	 User user6 = new User("User6", "6@mailmail", LocalDate.of(2021,7,1));
-	 User user7 = new User("User7", "7@mailmail", LocalDate.of(2021,8,22));
-	 User user8 = new User("User8", "8n@mailmail", LocalDate.of(2021,9,13));
-	 User user9 = new User("User9", "9@mailmail", LocalDate.of(2021,10,25));
-	 User user10 = new User("User10", "92@mailmail", LocalDate.of(2021,11,26));
+	 User user1 = new User("John", "john@mailmail.com", LocalDate.of(2021,4,26));
+	 User user2 = new User("Damian", "damiann@mailmail.com", LocalDate.of(2021,7,12));
+	 User user3 = new User("Cris", "cris@mailmail.com", LocalDate.of(2021,4,26));
+	 User user4 = new User("User4", "4@mailmai.com", LocalDate.of(2021,5,26));
+	 User user5 = new User("User5", "5@mailmail.com", LocalDate.of(2021,6,24));
+	 User user6 = new User("User6", "6@mailmail.com", LocalDate.of(2021,7,1));
+	 User user7 = new User("User7", "7@mailmail.com", LocalDate.of(2021,8,22));
+	 User user8 = new User("User8", "8n@mailmail.com", LocalDate.of(2021,9,13));
+	 User user9 = new User("User9", "9@mailmail.com", LocalDate.of(2021,10,25));
+	 User user10 = new User("User10", "92@mailmail.com", LocalDate.of(2021,11,26));
 
 	 List<User> list = Arrays.asList(user1,user2,user3,user4,user5,user6,user7,user8,user9,user10);
 	 list.stream().forEach(userRepository::save);
